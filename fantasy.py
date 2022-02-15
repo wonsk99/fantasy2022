@@ -4,13 +4,45 @@ from bs4 import BeautifulSoup as bs
 import pandas as pd
 
 # Get link
-#link = "https://gol.gg/game/stats/30006/page-game/"
-linkI = input("Game link(s) from gol.gg:\n")
-links = []
-while linkI != "":
-	links.append(linkI)
-	linkI = input()
+def getLinks():
+	LCSmatchlist = "https://gol.gg/tournament/tournament-matchlist/LCS%20Spring%202022/"
+	LECmatchlist = "https://gol.gg/tournament/tournament-matchlist/LEC%20Spring%202022/"
 
+	week = input("Which week?\n")
+	cweek = int(week) - 3
+	lcsweek = "WEEK" + str(cweek)
+	lecweek = "WEEK" + str(week)
+
+	print(lcsweek, lecweek)
+
+	matchlist = LECmatchlist
+
+	weeks = []
+	weeks.append(lcsweek)
+	weeks.append(lecweek)
+
+print(weeks)
+
+matchpage = requests.get(matchlist, headers={"User-agent": "Hi"})
+soup = bs(matchpage.content, "html.parser")
+
+matches = soup.find_all("tr")
+
+links = []
+
+for match in matches:
+	row = match.find_all("td")
+	if not row:
+		continue
+	for week in weeks:
+		if row[4].text == week:
+			baselink = 'https://gol.gg/'
+			a = row[0].find_all("a", href=True)
+			matchlink = a[0]['href']
+			baselink += "/".join(matchlink.split("/")[1:])
+			links.append(baselink)
+
+print(links)
 
 # Get Player Names and Stats
 #
@@ -18,7 +50,7 @@ while linkI != "":
 
 f2 = {}
 f3 = {}
-print("Output:")
+
 for link in links:
 	print(link)
 	# Error checking
