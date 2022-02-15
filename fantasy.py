@@ -4,41 +4,13 @@ from bs4 import BeautifulSoup as bs
 import pandas as pd
 
 # Get link
-
-matchlist = input("What tournament?\n")
-#matchlist = "https://gol.gg/tournament/tournament-matchlist/LCS%20Lock%20In%202022/"
-
-week = input("Which week?\n")
-#week = "DAY1"
-
-'''
 #link = "https://gol.gg/game/stats/30006/page-game/"
 linkI = input("Game link(s) from gol.gg:\n")
 links = []
 while linkI != "":
 	links.append(linkI)
 	linkI = input()
-'''
 
-matchpage = requests.get(matchlist, headers={"User-agent": "Hi"})
-soup = bs(matchpage.content, "html.parser")
-
-matches = soup.find_all("tr")
-
-links = []
-
-for match in matches:
-	row = match.find_all("td")
-	if not row:
-		continue
-	if row[4].text == week:
-		baselink = 'https://gol.gg/'
-		a = row[0].find_all("a", href=True)
-		matchlink = a[0]['href']
-		baselink += "/".join(matchlink.split("/")[1:])
-		links.append(baselink)
-
-print(links)
 
 # Get Player Names and Stats
 #
@@ -46,7 +18,7 @@ print(links)
 
 f2 = {}
 f3 = {}
-
+print("Output:")
 for link in links:
 	print(link)
 	# Error checking
