@@ -3,185 +3,154 @@ from bs4 import BeautifulSoup as bs
 
 import pandas as pd
 
-# Get link
-def getLinks():
-	LCSmatchlist = "https://gol.gg/tournament/tournament-matchlist/LCS%20Spring%202022/"
+# Function: getSoup
+# Just shorthand to soupify
+#
+#
+def getSoup(link):
+	page = requests.get(link, headers={"User-agent": "Hi"})
+	soup = bs(page.content, "html.parser")
+	return soup
+
+# Function: changeLink
+# Just shorthand to jump between pages
+#
+#
+def changeLink(link, text):
+	li = link.split("/")
+	li[-2] = text
+	clink = "/".join(li)
+	return clink
+
+# Function: testLinks
+# Test links... for testing purposes lol
+#
+#
+def testLinks():
 	LECmatchlist = "https://gol.gg/tournament/tournament-matchlist/LEC%20Spring%202022/"
+	links = []
 
-	week = input("Which week?\n")
-	cweek = int(week) - 3
-	lcsweek = "WEEK" + str(cweek)
-	lecweek = "WEEK" + str(week)
+	soup = getSoup(LECmatchlist)
+	matches = soup.find_all("tr")
 
-	print(lcsweek, lecweek)
-
-	matchlist = LECmatchlist
-
-	weeks = []
-	weeks.append(lcsweek)
-	weeks.append(lecweek)
-
-print(weeks)
-
-matchpage = requests.get(matchlist, headers={"User-agent": "Hi"})
-soup = bs(matchpage.content, "html.parser")
-
-matches = soup.find_all("tr")
-
-links = []
-
-for match in matches:
-	row = match.find_all("td")
-	if not row:
-		continue
-	for week in weeks:
-		if row[4].text == week:
+	for match in matches:
+		row = match.find_all("td")
+		if not row:
+			continue
+		if row[4].text == "WEEK2":
 			baselink = 'https://gol.gg/'
 			a = row[0].find_all("a", href=True)
 			matchlink = a[0]['href']
 			baselink += "/".join(matchlink.split("/")[1:])
 			links.append(baselink)
 
-print(links)
+	print(links)
+	return links
 
-# Get Player Names and Stats
+# Function: getLinks
+# Get links to both regions' games
 #
 #
+def getLinks():
+	LCSmatchlist = "https://gol.gg/tournament/tournament-matchlist/LCS%20Spring%202022/"
+	LECmatchlist = "https://gol.gg/tournament/tournament-matchlist/LEC%20Spring%202022/"
 
-f2 = {}
-f3 = {}
+	eweek = input("Which week?\n")
+	cweek = int(eweek) - 3
+	lcsweek = "WEEK" + str(cweek)
+	lecweek = "WEEK" + str(eweek)
 
-for link in links:
-	print(link)
-	# Error checking
-	if not link:
-		print(":p")
-		continue
+	links = []
 
-	if "page-game" not in link:
-		print("Error: Invalid site (make sure it is a 'page-game' page)")
-		continue
+	for matchlist in [LCSmatchlist, LECmatchlist]:
+		print("Parsing {}".format(matchlist))
+		if matchlist == LCSmatchlist:
+			lweek = lcsweek
+		else:
+			lweek = lecweek
+		soup = getSoup(matchlist)
+		matches = soup.find_all("tr")
 
-	if "page-game/" not in link:
-		link = link+"/"
+		for match in matches:
+			row = match.find_all("td")
+			if not row:
+				continue
+			if row[4].text == lweek:
+				baselink = 'https://gol.gg/'
+				a = row[0].find_all("a", href=True)
+				matchlink = a[0]['href']
+				baselink += "/".join(matchlink.split("/")[1:])
+				baselink = changeLink(baselink, "page-game")
+				links.append(baselink)
 
+	print("There were {} total matches in both regions".format(len(links)))
+	print(links)
+	return links
 
-	# Team Stuff link
-	#
-	#
-
-	# SOUP
-	page = requests.get(link, headers={"User-agent": "Hi"})
-	
-	soup = bs(page.content, "html.parser")
-
-	teams = soup.find_all("div", class_="col-12 col-sm-6")
-	bt = teams[0]
-	rt = teams[1]
-
-	bTeaminfo = bt.find_all("div", class_="row")[1]
-	rTeaminfo = rt.find_all("div", class_="row")[1]
-
-	# Turret
-	bTurr = int(bTeaminfo.find_all("span", class_="score-box blue_line")[1].text.strip())
-	rTurr = int(rTeaminfo.find_all("span", class_="score-box red_line")[1].text.strip())
-	
-	# First Turret
-	ab = bt.find_all("div", class_="col-2")[1].find_all("img")
-	ar = rt.find_all("div", class_="col-2")[1].find_all("img")
-
-	firstTurret = -1
-
-	if len(ab) == 2:
-		firstTurret = 0
-	if len(ar) == 2:
+# Function: teamData
+# Get the team data for each game
+#
+#
+def teamData(ttdata, f3):
+	tt = ttdata[0]
+	ttc = ttdata[1]
+	teamInfo = tt.find_all("div", class_="row")[1]	
+	tTurr = int(teamInfo.find_all("span", class_="score-box " + ttc + "_line")[1].text.strip())
+	at = tt.find_all("div", class_="col-2")[1].find_all("img")
+	firstTurret = 0
+	if len(at) == 2:
 		firstTurret = 1
-
+	
 	# Dragons
-	bDrag = int(bTeaminfo.find_all("span", class_="score-box blue_line")[2].text.strip())
-	rDrag = int(rTeaminfo.find_all("span", class_="score-box red_line")[2].text.strip())
+	tDrag = int(teamInfo.find_all("span", class_="score-box " + ttc + "_line")[2].text.strip())
 
 	# Elder Dragon
-	db = bt.find_all("div", class_="col-2")[2].find_all("img")
-	dr = rt.find_all("div", class_="col-2")[2].find_all("img")
+	dt = tt.find_all("div", class_="col-2")[2].find_all("img")
 
-	bElders = 0
-	rElders = 0
+	tElders = 0
 	
-	for drag in db:
+	for drag in dt:
 		if drag['src'] == "../_img/elder-dragon.png":
-			bElders += 1
-
-	for drag in dr:
-		if drag['src'] == "../_img/elder-dragon.png":
-			rElders += 1
+			tElders += 1
 
 	# Barons
-	bBaron = int(bTeaminfo.find_all("span", class_="score-box blue_line")[3].text.strip())
-	rBaron = int(rTeaminfo.find_all("span", class_="score-box red_line")[3].text.strip())
+	tBaron = int(teamInfo.find_all("span", class_="score-box " + ttc + "_line")[3].text.strip())
 
 	# Win
-	bWinfo = bt.find_all("div", class_="row")[0]
-	rWinfo = rt.find_all("div", class_="row")[0]
+	tWinfo = tt.find_all("div", class_="row")[0]
 
-	bTeamName = bWinfo.find("div", class_="col-12 blue-line-header").text.split(" - ")[0].strip()
-	rTeamName = rWinfo.find("div", class_="col-12 red-line-header").text.split(" - ")[0].strip()
+	t1 = tWinfo.find("div", class_="col-12 " + ttc + "-line-header").text.split(" - ")[0].strip()
 	
-	bWin = 1 if (bWinfo.find("div", class_="col-12 blue-line-header").text.split(" - ")[1].strip() == "WIN") else 0
-	rWin = 1 if (rWinfo.find("div", class_="col-12 red-line-header").text.split(" - ")[1].strip() == "WIN") else 0
+	tWin = 1 if (tWinfo.find("div", class_="col-12 " + ttc + "-line-header").text.split(" - ")[1].strip() == "WIN") else 0
 
 	# Win in < 30 min
 	timeInfo = soup.find_all("div", class_="col-6 text-center")[0]
 	gametime = int(timeInfo.find("h1").text.split(":")[0])
 	
-	bThirty = 0
-	rThirty = 0
+	tThirty = 0
 	
 	if gametime < 30:
-		bThirty = bWin
-		rThirty = rWin
-
-	
-	t1 = bTeamName
-	t2 = rTeamName
+		tThirty = tWin
 
 	if t1 not in f3:
 		f3[t1] = {"Turrets": 0, "Dragons": 0, "Elder Dragons": 0, "Barons": 0, "Win": 0, "Win in 30": 0, "First Turret": 0, "Games Played": 0}
-	if t2 not in f3:
-		f3[t2] = {"Turrets": 0, "Dragons": 0, "Elder Dragons": 0, "Barons": 0, "Win": 0, "Win in 30": 0, "First Turret": 0, "Games Played": 0}
 
-	f3[t1]["Turrets"] += bTurr
-	f3[t1]["Dragons"] += bDrag
-	f3[t1]["Elder Dragons"] += bElders
-	f3[t1]["Barons"] += bBaron
-	f3[t1]["Win"] += bWin
-	f3[t1]["Win in 30"] += bThirty
-	f3[t1]["First Turret"] += int(not firstTurret)
+	f3[t1]["Turrets"] += tTurr
+	f3[t1]["Dragons"] += tDrag
+	f3[t1]["Elder Dragons"] += tElders
+	f3[t1]["Barons"] += tBaron
+	f3[t1]["Win"] += tWin
+	f3[t1]["Win in 30"] += tThirty
+	f3[t1]["First Turret"] += int(firstTurret)
 	f3[t1]["Games Played"] += 1
 
-	f3[t2]["Turrets"] += rTurr
-	f3[t2]["Dragons"] += rDrag
-	f3[t2]["Elder Dragons"] += rElders
-	f3[t2]["Barons"] += rBaron
-	f3[t2]["Win"] += rWin
-	f3[t2]["Win in 30"] += rThirty
-	f3[t2]["First Turret"] += int(firstTurret)
-	f3[t2]["Games Played"] += 1
+	return f3
 
-	# Basic INFO LINK
-	#
-	#
-	
-	li = link.split("/")
-	li[-2] = "page-fullstats"
-	tlink = "/".join(li)
-	print(tlink)
-	
-	# SOUP
-	page = requests.get(tlink, headers={"User-agent": "Hi"})
-	
-	soup = bs(page.content, "html.parser")
-	
+# Function: allPlayers
+# Get data for all the players
+#
+#
+def allPlayers(soup, f2):
 	# Get the table
 	allPlayers = soup.find_all("table", class_="completestats tablesaw")[0]
 
@@ -209,36 +178,14 @@ for link in links:
 			if not valStat:
 				valStat = 0
 			f2[names[v]][statName] += int(valStat)
-		
-	'''
-	# Easier way to csv
-	for i in range(0,10):
-		f2.append({})
-	as2 = allPlayers.find_all("tr")[1:]
-	for stat in as2:	
-		statName = stat.find_all("td")[0].text
-		# We only care about these values
-		onlyStats = ["Player", "Role", "Kills", "Deaths", "Assists", "CS", "Triple kills", "Quadra kills", "Penta kills", "Solo kills"]
-		if statName not in onlyStats:
-			continue
-		for v in range(0,10):
-			f2[v][statName] = stat.find_all("td")[v+1].text
-	'''
 
-	# First Blood link
-	#
-	#
-	
-	fb = link.split("/")
-	fb[-2] = "page-timeline"
-	flink = "/".join(fb)
-	print(flink)
+	return f2
 
-	# SOUP
-	page = requests.get(flink, headers={"User-agent": "Hi"})
-	
-	soup = bs(page.content, "html.parser")
-	
+# Function: firstBlood
+# First blood info is dumb on gol.gg
+#
+#
+def firstBlood(f2, soup):
 	# Get the table
 	timeline = soup.find_all("table", class_="nostyle timeline trhover")[0]
 
@@ -254,19 +201,50 @@ for link in links:
 			e = event[0]
 			if e['src'] == "../_img/kill-icon.png":
 				firstblood = events[i-2].text
-				break
-
+			break
+	
 	if firstblood:
 		f2[firstblood]["First Blood"] += 1
-		'''
-		for s2 in f2:
-			if s2["Player"] == firstblood:
-				s2["First Blood"] = True
-				break
-		'''
 
-df = pd.DataFrame(f2)
+	return f2
+
+# MAIN FUNCTION
+#
+#
+if __name__ == "__main__":
+	# Player and Team Data
+	fPLAYER = {}
+	fTEAM = {}
+
+	links = getLinks()
+	#links = testLinks()
+
+	for link in links:
+		print("Parsing {}".format(link))
+		# Team Stuff LINK
+		soup = getSoup(link)
+		teams = soup.find_all("div", class_="col-12 col-sm-6")
+		bt = teams[0]
+		rt = teams[1]
+
+		for teamBR in [(bt,"blue"), (rt, "red")]:
+			fTEAM = teamData(teamBR, fTEAM)
+
+		# Basic INFO LINK
+		tlink = changeLink(link,"page-fullstats")
+		soup = getSoup(tlink)
+		fPLAYER = allPlayers(soup, fPLAYER)
+	
+	
+		# First Blood LINK
+		flink = changeLink(link,"page-timeline")
+		soup = getSoup(flink)
+		fPLAYER = firstBlood(fPLAYER, soup)	
+		
+
+# Convert data dictionaries to CSV
+df = pd.DataFrame(fPLAYER)
 df.to_csv('player.csv')
 
-tf = pd.DataFrame(f3)
+tf = pd.DataFrame(fTEAM)
 tf.to_csv('team.csv')
